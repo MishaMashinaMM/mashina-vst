@@ -7,8 +7,7 @@ on:
       - dev/**
     paths:
       - '.github/workflows/windows-vst3.yml'
-      - 'scripts/**'
-      - 'UPSTREAM.md'
+      - '.github/workflows/windows-vst3.yml'
 
 permissions:
   contents: read
@@ -65,6 +64,7 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item 'upstream/target/plugin/FM-1.clap' dist/
           Copy-Item 'upstream/target/plugin/FM-1.vst3' dist/ -Recurse
+          if (-not (Test-Path 'INSTALL-WINDOWS.md' -PathType Leaf)) { throw 'Missing install instructions in checked-out commit' }
           Copy-Item 'INSTALL-WINDOWS.md' dist/
           Compress-Archive -Path dist/* -DestinationPath mashina-vst-windows-x64-prototype.zip -Force
 
