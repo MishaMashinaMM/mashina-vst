@@ -1,0 +1,77 @@
+name: Windows VST3 prototype
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev/**
+    paths:
+      - '.github/workflows/windows-vst3.yml'
+      - 'scripts/**'
+      - 'UPSTREAM.md'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build FM-1 emulator VST3 (Windows x64)
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - name: Checkout MASHINA VST project
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned upstream emulator
+        shell: pwsh
+        run: |
+          git clone --recurse-submodules https://github.com/joakimeriksson/fm1-emu.git upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Could not clone upstream' }
+          git -C upstream checkout 09aeae3e9d78db52c3b9f5ceed93bd1120ccf444
+          if ($LASTEXITCODE -ne 0) { throw 'Could not checkout pinned revision' }
+          git -C upstream submodule update --init --recursive
+          if ($LASTEXITCODE -ne 0) { throw 'Could not update submodules' }
+
+      - name: Install Rust (stable MSVC x64)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Set up build prerequisites
+        shell: pwsh
+        run: |
+          cmake --version
+          cargo --version
+          git --version
+          if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) { throw 'CMake not found' }
+
+      - name: Build CLAP and VST3 without installing
+        shell: pwsh
+        working-directory: upstream
+        run: |
+          $env:NO_INSTALL = '1'
+          & .\tools\build_plugin.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Plugin build failed: $LASTEXITCODE" }
+
+      - name: Verify both plugin components are present
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'upstream/target/plugin/FM-1.clap' -PathType Leaf)) { throw 'Missing FM-1.clap' }
+          if (-not (Test-Path 'upstream/target/plugin/FM-1.vst3' -PathType Container)) { throw 'Missing FM-1.vst3' }
+
+      - name: Package Windows plugin prototype
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item 'upstream/target/plugin/FM-1.clap' dist/
+          Copy-Item 'upstream/target/plugin/FM-1.vst3' dist/ -Recurse
+          Copy-Item 'INSTALL-WINDOWS.md' dist/
+          Compress-Archive -Path dist/* -DestinationPath mashina-vst-windows-x64-prototype.zip -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mashina-vst-windows-x64-prototype
+          path: mashina-vst-windows-x64-prototype.zip
+          if-no-files-found: error
+          retention-days: 14
