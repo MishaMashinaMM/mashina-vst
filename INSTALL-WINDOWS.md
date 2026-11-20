@@ -13,6 +13,13 @@ Unzip the archive. You must install **both** components:
    in its Plugin Manager. Find the FM-1 instrument.
 4. Open its UI and use **Load firmware / save…** to select your MASHINA
    `.fwsc` firmware package. It is **not included** in the archive.
+
+   The MASHINA firmware repository's device-installer workflow produces
+   `build/felucca-0.10.fwsc` (see its downloadable raw-firmware build artifact):
+   https://github.com/MishaMashinaMM/mashina-fm1-fw/actions/workflows/mashina-device-installer.yml
+   That workflow is manually triggered. Use an already built, compatible
+   `.fwsc` package if available; do not flash any physical device just to test
+   the VST plugin.
 5. Add notes in the Piano Roll, select the desired firmware MIDI channel
    mapping, and check the FL Studio mixer output.
 
